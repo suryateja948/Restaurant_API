@@ -1,6 +1,7 @@
 import { Schema, Prop, SchemaFactory } from "@nestjs/mongoose";
 import { Document } from "mongoose";
 
+
 export enum UserRoles {    // This snippet is basically have User Roles - Admin , User 
     ADMIN = 'admin',
     USER = 'user'
@@ -29,3 +30,7 @@ export class User extends Document {
 }
 
 export const UserSchema = SchemaFactory.createForClass(User); // This connects your User schema to the MongoDB collection inside NestJS.
+
+
+
+

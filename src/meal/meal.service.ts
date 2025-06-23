@@ -62,7 +62,16 @@ export class MealService {
       await restaurant.save();
     }
 
-    return this.mealModel.findById(meal._id).populate('restaurant user').exec();
+    //return this.mealModel.findById(meal._id).populate('restaurant user').exec();
+
+    // ✅ FINAL STEP: Fetch the full restaurant with fully populated meals
+    const updatedRestaurant = await this.restaurantModel
+      .findById(restaurant._id)
+      .populate('meals')
+      .populate('user')        // if you want to include restaurant creator
+      .populate('updatedBy');  // optional: who updated last
+    console.log(updatedRestaurant);
+    return updatedRestaurant;
   }
 
   //GET ALL MEALS 
@@ -73,6 +82,7 @@ export class MealService {
     if (role === UserRoles.ADMIN) {
       // ✅ Admin gets all meals
       return this.mealModel.find().populate('restaurant');
+
     }
 
     if (role === UserRoles.USER) {
@@ -91,7 +101,7 @@ export class MealService {
 
       return this.mealModel
         .find({ restaurant: { $in: restaurantIds } })
-        .populate('restaurant');
+        .populate('restaurant user');
     }
 
     throw new UnauthorizedException('Invalid role for accessing meals.');
@@ -133,7 +143,15 @@ export class MealService {
       }
 
       // If authorized, fetch meals for this restaurant
-      return this.mealModel.find({ restaurant: restaurantId }).populate('restaurant');
+      // return this.mealModel.find({ restaurant: restaurantId }).populate('restaurant'); 
+
+      const meals = await this.mealModel
+        .find({ restaurant: restaurantId })
+        .populate('restaurant')
+        .populate('user'); // Populate user who created the meal
+      console.log(meals);
+      return meals;
+
     }
 
     // Fallback for any other unexpected roles (should be caught by RolesGuard, but good for safety)
@@ -148,6 +166,7 @@ export class MealService {
     updateMealDto: UpdateMealDto,
     user: any,
   ): Promise<Meal> {
+    // Validate IDs
     if (!mongoose.Types.ObjectId.isValid(mealId)) {
       throw new BadRequestException('Invalid meal ID provided.');
     }
@@ -155,6 +174,7 @@ export class MealService {
       throw new BadRequestException('Invalid restaurant ID provided.');
     }
 
+    // Find the restaurant
     const restaurant = await this.restaurantModel.findById(restaurantId);
     if (!restaurant) throw new NotFoundException('Restaurant not found');
 
@@ -162,30 +182,52 @@ export class MealService {
     const isOwner = restaurant.user && restaurant.user.toString() === user._id.toString();
     const isFineDining = restaurant.category === Category.FINE_DINING;
 
+    // Check access permissions
     if (userRole !== 'admin' && !isOwner && !isFineDining) {
       throw new ForbiddenException('You are not allowed to update meals for this restaurant');
     }
 
+    // Find the meal
     const meal = await this.mealModel.findById(mealId);
     if (!meal) throw new NotFoundException('Meal not found');
 
+    // Check if the meal belongs to the correct restaurant
     if (meal.restaurant.toString() !== restaurantId) {
       throw new BadRequestException('Meal does not belong to the specified restaurant');
     }
 
-    // Object.assign(meal, updateMealDto); // Works
-    meal.set(updateMealDto); // Mongoose preferred way
+    // ✅ Update only the fields provided in the DTO, and leave others as-is
+    if (updateMealDto.name !== undefined) {
+      meal.name = updateMealDto.name.trim().toLowerCase();  // Normalize name
+    }
+    if (updateMealDto.description !== undefined) {
+      meal.description = updateMealDto.description;
+    }
+    if (updateMealDto.price !== undefined) {
+      meal.price = updateMealDto.price;
+    }
+    if (updateMealDto.category !== undefined) {
+      meal.category = updateMealDto.category;
+    }
+
+    // Track who updated the meal
     meal.user = new mongoose.Types.ObjectId(user._id);
+
+    // Save the changes
     await meal.save();
 
-    // Explicitly handle potential null from findById after save
-    const updatedAndPopulatedMeal = await this.mealModel.findById(meal._id).populate('restaurant user').exec();
-    if (!updatedAndPopulatedMeal) {
-      // This would be an unexpected error if save() was successful
+    // Fetch the updated meal with populated fields
+    const updatedMeal = await this.mealModel
+      .findById(meal._id)
+      .populate('restaurant user');
+
+    if (!updatedMeal) {
       throw new InternalServerErrorException(`Failed to retrieve meal with id ${meal._id} after update.`);
     }
-    return updatedAndPopulatedMeal;
+
+    return updatedMeal;
   }
+
 
   //DELETE A MEAL 
 
@@ -211,6 +253,10 @@ export class MealService {
     if (role === 'admin') {
       // Admin can delete any meal directly
       await this.mealModel.findByIdAndDelete(mealId);
+      await this.restaurantModel.findByIdAndUpdate(
+        restaurantId,
+        { $pull: { meals: mealId } } // 🧹 Remove meal reference from restaurant
+      );
       return { message: 'Meal deleted successfully by admin' };
     }
 
@@ -236,6 +282,11 @@ export class MealService {
     }
 
     await this.mealModel.findByIdAndDelete(mealId);
+    // 🧹 Remove meal reference from restauran
+    await this.restaurantModel.findByIdAndUpdate(
+      restaurantId,
+      { $pull: { meals: mealId } }
+    );
     return { message: 'Meal deleted successfully' };
   }
 }

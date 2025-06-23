@@ -26,7 +26,8 @@ export class AuthService {
     if (existingUser) {
       throw new ConflictException('Email already exists');
     }
-
+    
+ 
     const hashedPassword = await bcrypt.hash(password, 10); // basically this snippet is used to hash the password
     const user = await this.userModel.create({
       name,
@@ -35,6 +36,8 @@ export class AuthService {
       // role: role || 'User'    // assigns only if not provided
       role,
     });
+
+
 
     return user; // returns the user object 
 
@@ -83,9 +86,6 @@ export class AuthService {
   async getAllUsers(): Promise<User[]> {
     return this.userModel.find().select('-password').exec(); // exclude password field 
   }
-
-
-
 }
 
 

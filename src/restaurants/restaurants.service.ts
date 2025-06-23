@@ -42,7 +42,7 @@ export class RestaurantsService {
             .skip(skip)
             .populate('user', 'email role')
             .populate('updatedBy', '_id email role')
-            .populate('meals');
+            .populate('meals', 'name description price category user');
         return restaurants;
     }
 
