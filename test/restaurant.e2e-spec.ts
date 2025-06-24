@@ -135,7 +135,7 @@ describe('RestaurantsController (e2e)', () => {
     expect(res.body.length).toBeGreaterThanOrEqual(2);
   });
 
-  it('GET /restaurants - User sees Fine Dining and own restaurant', async () => {
+  it('GET /restaurants - User sees Fine Dining and own restaurant created by the user role only', async () => {
     const res = await request(app.getHttpServer())
       .get('/restaurants')
       .set('Authorization', `Bearer ${userToken}`)
@@ -145,14 +145,14 @@ describe('RestaurantsController (e2e)', () => {
     expect(res.body.find((r) => r.name === 'User Cafe')).toBeDefined();
   });
 
-  it('GET/restaurants - User should see the fine dining restaurant created for this test', async () => {
+  it('GET/restaurants - User should see the fine dining category but the  restaurant created is by admin role', async () => {
     // ARRANGE: Create the specific restaurant for this test.
     // (Because of afterEach, the database is empty before this step)
     await request(app.getHttpServer())
       .post('/restaurants')
       .set('Authorization', `Bearer ${adminToken}`)
       .send({
-        name: 'My Test Fine Dining', // Use a unique name
+        name: 'My Test Fine Dining', 
         address: '123 Specific St',
         category: Category.FINE_DINING,
         description: 'A restaurant for a specific test',
@@ -173,14 +173,94 @@ describe('RestaurantsController (e2e)', () => {
     expect(fineDiningRestaurant).toBeDefined();
     expect(fineDiningRestaurant.category).toBe(Category.FINE_DINING);
 });
+it('GET/restaurants - User should see the cafe category but the restaurant created is by user role', async () => {
+    await request(app.getHttpServer())
+      .post('/restaurants')
+      .set('Authorization', `Bearer ${userToken}`)
+        .send({
+        name: 'My Test Cafe',
+        address: '123 User Cafe St',
+        category: Category.CAFE,
+        description: 'A user-owned cafe',
+        email: 'user_cafe@test.com',
+        phoneNo: "9912345678",
+      });
 
-  it('GET /restaurants/:id - should fetch by ID', async () => {
+      const res = await request(app.getHttpServer())
+      .get('/restaurants')
+      .set('Authorization', `Bearer ${userToken}`)
+      .expect(200);
+
+    expect(res.body.find((r) => r.category === Category.CAFE)).toBeDefined();
+    expect(res.body.find((r) => r.name === 'My Test Cafe')).toBeDefined();
+  });
+// Get Restaurant by ID by the user role Admin 
+
+  it('GET /restaurants/:id - should fetch by ID by the role Admin', async () => {
     const res = await request(app.getHttpServer())
       .get(`/restaurants/${createdRestaurantId}`)
       .set('Authorization', `Bearer ${adminToken}`)
       .expect(200);
 
     expect(res.body._id).toBe(createdRestaurantId);
+  });
+
+  it('GET/restaurants/:id - User can fetch own their own restaurant and as well fine dining restaurant', async () => {
+    const res = await request(app.getHttpServer())
+      .get(`/restaurants/${createdRestaurantId}`)
+      .set('Authorization', `Bearer ${userToken}`)
+      .expect(200);
+    expect(res.body._id).toBe(createdRestaurantId);
+  }); 
+  
+  it('GET/restaurants/:id - User can fetch Fine Dining restaurant created by Admin', async () => {
+    // Create a Fine Dining restaurant as Admin for this test
+    const createRes = await request(app.getHttpServer())
+      .post('/restaurants')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({
+        name: 'Admin Fine Dining',
+        address: '123 Admin St',
+        category: Category.FINE_DINING,
+        description: 'A fine dining restaurant created by admin',
+        email: 'admin_fine_dining@test.com',
+        phoneNo: "9912345678",
+      });
+
+    const fineDiningRestaurantId = createRes.body._id;
+
+    // User fetches the Fine Dining restaurant
+    const res = await request(app.getHttpServer())
+      .get(`/restaurants/${fineDiningRestaurantId}`)
+      .set('Authorization', `Bearer ${userToken}`)
+      .expect(200);
+
+    expect(res.body._id).toBe(fineDiningRestaurantId);
+  });
+
+  it('GET/restaurants/:id - User should be able to fetch their own restaurant but the category is different', async () => {
+    // Create a restaurant that this user will own.
+    const createRes = await request(app.getHttpServer())
+      .post('/restaurants')
+      .set('Authorization', `Bearer ${userToken}`)
+      .send({
+        name: 'My Test Restaurant',
+        address: '123 User St',
+        category: Category.CAFE,
+        description: 'A user-owned restaurant',
+        email: 'user_restaurant@test.com',
+        phoneNo: "9912345678",
+      });
+
+    const userOwnedRestaurantId = createRes.body._id;
+    // User fetches their own restaurant
+    const res = await request(app.getHttpServer())
+      .get(`/restaurants/${userOwnedRestaurantId}`)
+      .set('Authorization', `Bearer ${userToken}`)
+      .expect(200);
+    console.log('Fetch Response:', res.body);
+    console.log('User Owned Restaurant ID:', userOwnedRestaurantId);
+    expect(res.body._id).toBe(userOwnedRestaurantId);
   });
 
   it('PUT /restaurants/:id - Admin can update any restaurant', async () => {
@@ -194,6 +274,77 @@ describe('RestaurantsController (e2e)', () => {
 
     expect(res.body.name).toBe('Updated Feast');
   });
+
+    it('PUT /restaurants/:id - User can update their own restaurant and fine dining', async () => {
+        const res = await request(app.getHttpServer())
+            .put(`/restaurants/${createdRestaurantId}`)
+            .set('Authorization', `Bearer ${userToken}`)
+            .send({
+                name: 'User Updated Restaurant',
+            })
+            .expect(200);  
+            expect(res.body.name).toBe('User Updated Restaurant');
+    });
+
+    it('PUT/restaurants/:id - User can update their own restaurant and category is different', async () => {
+        const res = await request(app.getHttpServer())
+            .put(`/restaurants/${createdRestaurantId}`)
+            .set('Authorization', `Bearer ${userToken}`)
+            .send({
+                name: 'User Updated Restaurant with Different Category',
+                category: Category.CAFE, // Different category
+            })
+            .expect(200);
+        expect(res.body.name).toBe('User Updated Restaurant with Different Category');
+        expect(res.body.category).toBe(Category.CAFE);
+    });
+
+    // it('PUT/restaurants/:id - User can update Fine Dining category but restaurant is created by Admin', async () => {
+    //   const res = await request(app.getHttpServer())
+    //     .put(`/restaurants/${createdRestaurantId}`)
+    //     .set('Authorization', `Bearer ${userToken}`)
+    //     .send({
+    //       name: 'User Updated Fine Dining',
+    //       category: Category.FINE_DINING,
+    //     })
+    //     .expect(200);
+    //     console.log('Update Response:', res.body.name);
+    //     console.log('Update Category:', res.body.category);
+    //   expect(res.body.name).toBe('User Updated Fine Dining');
+    //   expect(res.body.category).toBe(Category.FINE_DINING);
+    // });
+
+
+    it('PUT/restaurants/:id - User can update Fine Dining category but restaurant is created by Admin', async () => {
+        const createRes = await request(app.getHttpServer())
+      .post('/restaurants')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({
+        name: 'My Test Restaurant',
+        address: '123 User St',
+        category: Category.FINE_DINING,
+        description: 'A user-owned restaurant',
+        email: 'user_restaurant@test.com',
+        phoneNo: "9912345678",
+      });
+
+    const userOwnedRestaurantId = createRes.body._id;
+
+    // User attempts to update the restaurant to Fine Dining
+    const res = await request(app.getHttpServer())
+      .put(`/restaurants/${userOwnedRestaurantId}`)
+      .set('Authorization', `Bearer ${userToken}`)
+      .send({
+        name: 'User Updated Fine Dining',
+        category: Category.FINE_DINING,
+      })
+      .expect(200);
+    console.log('Update Response:', res.body.name);
+    console.log('Update Category:', res.body.category);
+    expect(res.body.name).toBe('User Updated Fine Dining');
+    expect(res.body.category).toBe(Category.FINE_DINING);
+  });
+
  // Delete the restaurant created by the admin 
 
   it('DELETE /restaurants/:id - Admin can delete', async () => {
@@ -227,7 +378,6 @@ it('DELETE/restaurants/:id - User can delete THEIR OWN restaurant', async () => 
         .delete(`/restaurants/${userOwnedRestaurantId}`) // Use the correct ID
         .set('Authorization', `Bearer ${userToken}`)    // Use the same user's token
         .expect(200); // This will now pass
-        console.log('Delete Response:', deleteRes.body);
     expect(deleteRes.body.deleted).toBe(true);
 });
 

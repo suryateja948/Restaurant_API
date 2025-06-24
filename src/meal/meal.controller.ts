@@ -22,8 +22,8 @@ export class MealController {
 
   // ✅ Create or update meal based on logic
   @Post()
-  @UseGuards(AuthGuard('jwt'))
-  @UseGuards(AuthGuard(), RolesGuard)
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  //@UseGuards(AuthGuard(), RolesGuard)
   @Roles(UserRoles.ADMIN, UserRoles.USER)
   async createMeal(
     @Body() createMealDto: CreateMealDto,
@@ -40,8 +40,8 @@ export class MealController {
 
 
   @Get()
-  @UseGuards(AuthGuard('jwt'))
-  @UseGuards(AuthGuard(), RolesGuard)
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  //@UseGuards(AuthGuard(), RolesGuard)
   @Roles(UserRoles.ADMIN, UserRoles.USER)
   async findAll(@Req() req: any) {
     const user = req.user;
@@ -60,8 +60,8 @@ export class MealController {
 
   //  Get meals by restaurant ID 
   @Get('restaurant/:restaurantId')
-  @UseGuards(AuthGuard('jwt'))
-  @UseGuards(AuthGuard(), RolesGuard)
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  //@UseGuards(AuthGuard(), RolesGuard)
   @Roles(UserRoles.ADMIN, UserRoles.USER)
   async findByRestaurantId(
     @Param('restaurantId') restaurantId: string,
@@ -73,8 +73,8 @@ export class MealController {
   //Update meal based on  Restaurant ID 
 
   @Put(':mealId/restaurant/:restaurantId/')
-  @UseGuards(AuthGuard('jwt'))
-  @UseGuards(AuthGuard(), RolesGuard)
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  //@UseGuards(AuthGuard(), RolesGuard)
   @Roles(UserRoles.ADMIN, UserRoles.USER)
   async updateMealByRestaurant(
     @Param('restaurantId') restaurantId: string,
@@ -87,8 +87,8 @@ export class MealController {
   }
 
   // Delete a meal based on restaurant id 
-  @UseGuards(AuthGuard(), RolesGuard)
-  @UseGuards(AuthGuard('jwt'))
+  //@UseGuards(AuthGuard(), RolesGuard)
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
   @Roles(UserRoles.ADMIN, UserRoles.USER)
   @Delete(':mealId/restaurant/:restaurantId')
   async deleteMeal(
