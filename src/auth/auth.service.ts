@@ -37,9 +37,12 @@ export class AuthService {
       role,
     });
 
+    //Now we don't want to return the password in the response
+    const userObject = user.toObject(); // Convert Mongoose document to plain object
+    delete (userObject as { password?: string }).password; // Remove the password field
+    return userObject; // Return the user object without the password
 
-
-    return user; // returns the user object 
+    //return user; // returns the user object 
 
   }
 

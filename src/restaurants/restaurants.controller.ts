@@ -5,7 +5,7 @@ import { Category, Restaurant } from './schemas/restaurant.schema';
 import { CreateRestaurantDto } from './dto/create-restaurant.dto';
 import { UpdateRestaurantDto } from './dto/update-restaurant.dto';
 import { AuthGuard } from '@nestjs/passport';
-import { UserRoles } from '../schemas/user.schema';
+import { User, UserRoles } from '../schemas/user.schema';
 import { RolesGuard } from '../guards/roles.guard';
 import { Roles } from '../decorators/roles.decorator';
 
