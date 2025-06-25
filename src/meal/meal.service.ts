@@ -282,7 +282,7 @@ export class MealService {
     }
 
     await this.mealModel.findByIdAndDelete(mealId);
-    // 🧹 Remove meal reference from restauran
+    // 🧹 Remove meal reference from restaurant
     await this.restaurantModel.findByIdAndUpdate(
       restaurantId,
       { $pull: { meals: mealId } }
